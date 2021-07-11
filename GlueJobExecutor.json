@@ -1,0 +1,54 @@
+{
+  "Comment": "Step function to run a Glue Job through a lambda invoke",
+  "StartAt": "Invoke_Lambda_Function",
+  "States": {
+    "Invoke_Lambda_Function": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:REGION:ACCOUNT_ID:function:FUNCTION_NAME",
+        "Payload": {
+          "Input.$": "$"
+        }
+      },
+      "Next": "Glue_Job_Execution"
+    },
+    "Glue_Job_Execution": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "myJobName"
+      },
+      "Next": "Job_Completed",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "Job_Failure"
+        }
+      ]
+    },
+        "Job_Failure": {
+      "Type": "Pass",
+      "Next": "Failure_Notification"
+    }
+    ,
+    "Failure_Notification": {
+  "Type": "Task",
+  "Resource": "arn:aws:states:::sns:publish",
+  "Parameters": {
+    "TopicArn": "arn:aws:sns:us-east-1:ACCOUNT_ID:myTopic",
+    "Message": {
+      "Input": "Hello from Step Functions!"
+    }
+  },
+  "Next": "Job_Completed"
+}
+    ,
+    "Job_Completed": {
+      "Type": "Pass",
+      "End": true
+    }
+  }
+}
